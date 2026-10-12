@@ -1,6 +1,8 @@
 enabled: true
 instance_url: ''
 website_token: ''
+installation_mode: tracker
+consent_banner: none
 consent_default: denied
 strict_profile: false
 respect_dnt: true

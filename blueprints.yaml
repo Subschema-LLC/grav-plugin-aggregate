@@ -1,7 +1,7 @@
 name: AGGREGATE
 slug: aggregate
 type: plugin
-version: 1.0.0
+version: 1.1.0
 description: "Privacy-first, self-hosted analytics for Grav. Adds the [AGGREGATE](https://github.com/Subschema-LLC/aggregate) tracker to your site: anonymous by default, metrics stored as SQL views on your own server, nothing sent to a third party."
 icon: line-chart
 author:
@@ -41,6 +41,31 @@ form:
       type: text
       label: PLUGIN_AGGREGATE.WEBSITE_TOKEN
       help: PLUGIN_AGGREGATE.WEBSITE_TOKEN_HELP
+
+    installation_mode:
+      type: select
+      label: PLUGIN_AGGREGATE.INSTALLATION_MODE
+      help: PLUGIN_AGGREGATE.INSTALLATION_MODE_HELP
+      default: tracker
+      options:
+        tracker: PLUGIN_AGGREGATE.MODE_TRACKER
+        tagmanager: PLUGIN_AGGREGATE.MODE_TAGMANAGER
+
+    consent_banner:
+      type: select
+      label: PLUGIN_AGGREGATE.CONSENT_BANNER
+      help: PLUGIN_AGGREGATE.CONSENT_BANNER_HELP
+      default: none
+      options:
+        none: PLUGIN_AGGREGATE.BANNER_NONE
+        builtin: PLUGIN_AGGREGATE.BANNER_BUILTIN
+        standalone: PLUGIN_AGGREGATE.BANNER_STANDALONE
+
+    site_id:
+      type: text
+      label: PLUGIN_AGGREGATE.SITE_ID
+      help: PLUGIN_AGGREGATE.SITE_ID_HELP
+      disabled: true
 
     consent_default:
       type: select

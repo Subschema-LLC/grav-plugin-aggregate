@@ -2,10 +2,11 @@
 /**
  * AGGREGATE plugin for Grav CMS.
  *
- * Adds the AGGREGATE analytics tracker to public HTML pages. AGGREGATE is a
- * self-hosted, privacy-first analytics platform; this plugin emits a single
- * script tag pointing at the site owner's own AGGREGATE instance. It stores
- * nothing itself and sets no cookies.
+ * Adds AGGREGATE analytics to public HTML pages. AGGREGATE is a
+ * self-hosted, privacy-first analytics platform; this plugin emits script
+ * tags pointing at the site owner's own AGGREGATE instance: the tracker
+ * directly, or the tag manager lite container, optionally preceded by one
+ * hosted consent banner. It stores nothing itself and sets no cookies.
  *
  * @license MIT
  */
@@ -18,7 +19,7 @@ class AggregatePlugin extends Plugin
 {
     /**
      * Subscribe to the plugin initialization event; rendering events are
-     * enabled from there so the tracker is never wired up for Grav Admin.
+     * enabled from there so the scripts are never wired up for Grav Admin.
      *
      * @return array
      */
@@ -32,6 +33,7 @@ class AggregatePlugin extends Plugin
     public function onPluginsInitialized(): void
     {
         if ($this->isAdmin()) {
+            $this->exposeSiteId();
             return;
         }
 
@@ -41,14 +43,36 @@ class AggregatePlugin extends Plugin
     }
 
     /**
-     * Insert the tracker tag immediately before </body> of the generated
-     * HTML output. Output without a </body> (feeds, JSON, redirects) is
-     * left untouched.
+     * Make the derived tag manager site ID available to the Admin
+     * configuration form as a read-only value. The ID is the first 24 hex
+     * characters of the SHA-256 of the website token (the same derivation
+     * AGGREGATE uses; see app:tag-manager:sites). It lives only in the
+     * runtime configuration object and is never read back by this plugin:
+     * the script URLs always derive it from the token directly.
+     */
+    private function exposeSiteId(): void
+    {
+        $token = trim((string) $this->config->get('plugins.aggregate.website_token'));
+        $this->config->set(
+            'plugins.aggregate.site_id',
+            $token === '' ? '' : self::siteId($token)
+        );
+    }
+
+    private static function siteId(string $token): string
+    {
+        return substr(hash('sha256', $token), 0, 24);
+    }
+
+    /**
+     * Insert the AGGREGATE script tags immediately before </body> of the
+     * generated HTML output. Output without a </body> (feeds, JSON,
+     * redirects) is left untouched.
      */
     public function onOutputGenerated(): void
     {
-        $tag = $this->buildTrackerTag();
-        if ($tag === null) {
+        $tags = $this->buildScriptTags();
+        if ($tags === null) {
             return;
         }
 
@@ -58,17 +82,23 @@ class AggregatePlugin extends Plugin
             return;
         }
 
-        $this->grav->output = substr_replace($output, $tag . "\n</body>", $position, 7);
+        $this->grav->output = substr_replace($output, $tags . "\n</body>", $position, 7);
     }
 
     /**
-     * Build the tracker script tag from the plugin configuration, or return
-     * null when the tracker must not appear on this response: plugin
+     * Build the script tags for this response from the plugin
+     * configuration, or return null when nothing must appear: plugin
      * disabled, missing instance URL or website token, admin context, a
      * Do Not Track request we are configured to respect, or a visitor who
-     * can log in to Grav Admin while admin exclusion is on.
+     * can log in to Grav Admin while admin exclusion is on. These gates
+     * apply to both installation modes.
+     *
+     * Tag order follows AGGREGATE's documented snippets (docs/SETUP.md):
+     * the consent banner, when one is selected, loads before the tracker
+     * or the tag container so a stored choice is in place first. Only one
+     * banner is ever emitted; the setting is a single choice, not toggles.
      */
-    private function buildTrackerTag(): ?string
+    private function buildScriptTags(): ?string
     {
         if ($this->isAdmin()) {
             return null;
@@ -85,7 +115,7 @@ class AggregatePlugin extends Plugin
             return null;
         }
 
-        // Respect Do Not Track: the tracker is not loaded at all.
+        // Respect Do Not Track: none of the scripts are loaded at all.
         if (!empty($config['respect_dnt']) && ($_SERVER['HTTP_DNT'] ?? '') === '1') {
             return null;
         }
@@ -98,9 +128,48 @@ class AggregatePlugin extends Plugin
             }
         }
 
-        // Configuration travels in the script URL (documented URL-parameter
-        // form), so the tag needs no inline JavaScript and stays friendly
-        // to strict Content Security Policies.
+        $min = !empty($config['minified']) ? '?min=1' : '';
+        $siteId = self::siteId($token);
+        $tags = [];
+
+        // The hosted consent banner, when selected, comes first in both
+        // modes. The built-in consent manager lite works alongside the
+        // plain tracker as well as the tag container: Setup offers the
+        // consent choice separately from the installation method, and its
+        // direct-tracker snippet loads cmp-lite before aggregate.js.
+        $banner = isset($config['consent_banner']) ? (string) $config['consent_banner'] : 'none';
+        if ($banner === 'builtin') {
+            $tags[] = $this->scriptTag($instance . '/cmp-lite/sites/' . $siteId . '/consent.js' . $min);
+        } elseif ($banner === 'standalone') {
+            $tags[] = $this->scriptTag($instance . '/standalone-cmp/sites/' . $siteId . '/consent.js' . $min);
+        }
+
+        $mode = isset($config['installation_mode']) ? (string) $config['installation_mode'] : 'tracker';
+        if ($mode === 'tagmanager') {
+            // Tag manager lite: the hosted container only. The tracker
+            // never appears here; it runs as a tag inside the container,
+            // configured in AGGREGATE itself.
+            $tags[] = $this->scriptTag($instance . '/tms-lite/sites/' . $siteId . '/lib.js' . $min);
+        } else {
+            $tags[] = $this->buildTrackerTag($config, $instance, $token);
+        }
+
+        return implode("\n", $tags);
+    }
+
+    private function scriptTag(string $src): string
+    {
+        return '<script src="' . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') . '"'
+            . ' defer referrerpolicy="no-referrer"></script>';
+    }
+
+    /**
+     * The v1.0 tracker tag: configuration travels in the script URL
+     * (documented URL-parameter form), so the tag needs no inline
+     * JavaScript and stays friendly to strict Content Security Policies.
+     */
+    private function buildTrackerTag(array $config, string $instance, string $token): string
+    {
         $params = [];
         if (!empty($config['minified'])) {
             $params['min'] = '1';
@@ -108,6 +177,8 @@ class AggregatePlugin extends Plugin
         $params['endpoint'] = $instance . '/api/receive';
         $params['token'] = $token;
 
+        // Tracker mode only: in tag manager mode the tracker tag's own
+        // URL inside AGGREGATE carries its consent default instead.
         $consent = isset($config['consent_default']) ? (string) $config['consent_default'] : 'denied';
         if ($consent === 'denied') {
             $params['consent'] = '0';
