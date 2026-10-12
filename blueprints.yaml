@@ -1,0 +1,101 @@
+name: AGGREGATE
+slug: aggregate
+type: plugin
+version: 1.0.0
+description: "Privacy-first, self-hosted analytics for Grav. Adds the [AGGREGATE](https://github.com/Subschema-LLC/aggregate) tracker to your site: anonymous by default, metrics stored as SQL views on your own server, nothing sent to a third party."
+icon: line-chart
+author:
+  name: Subschema LLC
+  url: https://subschema.io
+homepage: https://github.com/Subschema-LLC/grav-plugin-aggregate
+keywords: aggregate, analytics, privacy, statistics, self-hosted
+bugs: https://github.com/Subschema-LLC/grav-plugin-aggregate/issues
+docs: https://github.com/Subschema-LLC/grav-plugin-aggregate/blob/main/README.md
+license: MIT
+compatibility:
+  grav: ['1.7', '2.0']
+dependencies:
+  - { name: grav, version: '>=1.7.0' }
+
+form:
+  validation: loose
+  fields:
+    enabled:
+      type: toggle
+      label: PLUGIN_ADMIN.ENABLE
+      highlight: 1
+      default: 1
+      options:
+        1: PLUGIN_ADMIN.YES
+        0: PLUGIN_ADMIN.NO
+      validate:
+        type: bool
+
+    instance_url:
+      type: text
+      label: PLUGIN_AGGREGATE.INSTANCE_URL
+      help: PLUGIN_AGGREGATE.INSTANCE_URL_HELP
+      placeholder: https://analytics.example.com
+
+    website_token:
+      type: text
+      label: PLUGIN_AGGREGATE.WEBSITE_TOKEN
+      help: PLUGIN_AGGREGATE.WEBSITE_TOKEN_HELP
+
+    consent_default:
+      type: select
+      label: PLUGIN_AGGREGATE.CONSENT_DEFAULT
+      help: PLUGIN_AGGREGATE.CONSENT_DEFAULT_HELP
+      default: denied
+      options:
+        denied: PLUGIN_AGGREGATE.CONSENT_DENIED
+        granted: PLUGIN_AGGREGATE.CONSENT_GRANTED
+        none: PLUGIN_AGGREGATE.CONSENT_NONE
+
+    strict_profile:
+      type: toggle
+      label: PLUGIN_AGGREGATE.STRICT_PROFILE
+      help: PLUGIN_AGGREGATE.STRICT_PROFILE_HELP
+      highlight: 1
+      default: 0
+      options:
+        1: PLUGIN_ADMIN.YES
+        0: PLUGIN_ADMIN.NO
+      validate:
+        type: bool
+
+    respect_dnt:
+      type: toggle
+      label: PLUGIN_AGGREGATE.RESPECT_DNT
+      help: PLUGIN_AGGREGATE.RESPECT_DNT_HELP
+      highlight: 1
+      default: 1
+      options:
+        1: PLUGIN_ADMIN.YES
+        0: PLUGIN_ADMIN.NO
+      validate:
+        type: bool
+
+    exclude_admins:
+      type: toggle
+      label: PLUGIN_AGGREGATE.EXCLUDE_ADMINS
+      help: PLUGIN_AGGREGATE.EXCLUDE_ADMINS_HELP
+      highlight: 1
+      default: 1
+      options:
+        1: PLUGIN_ADMIN.YES
+        0: PLUGIN_ADMIN.NO
+      validate:
+        type: bool
+
+    minified:
+      type: toggle
+      label: PLUGIN_AGGREGATE.MINIFIED
+      help: PLUGIN_AGGREGATE.MINIFIED_HELP
+      highlight: 1
+      default: 1
+      options:
+        1: PLUGIN_ADMIN.YES
+        0: PLUGIN_ADMIN.NO
+      validate:
+        type: bool
