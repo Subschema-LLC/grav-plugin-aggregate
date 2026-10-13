@@ -1,3 +1,9 @@
+# v1.1.1
+## 10/12/2026
+
+* Fix: the read-only tag manager site ID now appears in Grav 2's Admin. That Admin loads the form's values from the YAML files and masks the website token, so the value the plugin set for the classic Admin never reached it. The field now gets the derived ID as its default, and saving the settings refreshes the stored ID from the token being saved, so a new token's ID shows right after saving in both Admins
+* The script URLs are unchanged: they still derive the site ID from the token on every request
+
 # v1.1.0
 ## 10/11/2026
 

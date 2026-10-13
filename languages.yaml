@@ -14,7 +14,7 @@ en:
     BANNER_BUILTIN: "Built-in consent manager lite"
     BANNER_STANDALONE: "Standalone banner"
     SITE_ID: "Tag manager site ID"
-    SITE_ID_HELP: "Read-only. Derived from the website token above (the first 24 characters of its SHA-256); it is never stored, and the script URLs derive it the same way. It appears in the hosted banner and container URLs. Compare it in AGGREGATE under Collection → Tag manager lite, or with: php bin/console app:tag-manager:sites"
+    SITE_ID_HELP: "Read-only. Derived from the saved website token (the first 24 characters of its SHA-256) and refreshed whenever these settings are saved; the script URLs always derive it from the token itself. It appears in the hosted banner and container URLs. Compare it in AGGREGATE under Collection → Tag manager lite, or with: php bin/console app:tag-manager:sites"
     CONSENT_DEFAULT: "Consent default"
     CONSENT_DEFAULT_HELP: "Consent state the tracker assumes before the visitor makes a choice. Your consent manager can update it at any time through Aggregate.setConsent(). Tracker mode only: in tag manager mode, the tracker tag's own URL inside AGGREGATE carries its consent default."
     CONSENT_DENIED: "Denied until the visitor chooses"

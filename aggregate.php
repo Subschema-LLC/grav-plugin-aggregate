@@ -14,6 +14,7 @@
 namespace Grav\Plugin;
 
 use Grav\Common\Plugin;
+use RocketTheme\Toolbox\Event\Event;
 
 class AggregatePlugin extends Plugin
 {
@@ -21,12 +22,19 @@ class AggregatePlugin extends Plugin
      * Subscribe to the plugin initialization event; rendering events are
      * enabled from there so the scripts are never wired up for Grav Admin.
      *
+     * The two settings-form events are subscribed here rather than from
+     * onPluginsInitialized: under Grav 2's Admin (admin2 and the API plugin)
+     * isAdmin() is still false when plugins initialize, so a listener gated
+     * on it would never run there.
+     *
      * @return array
      */
     public static function getSubscribedEvents(): array
     {
         return [
             'onPluginsInitialized' => ['onPluginsInitialized', 0],
+            'onApiBlueprintResolved' => ['onApiBlueprintResolved', 0],
+            'onAdminSave' => ['onAdminSave', 0],
         ];
     }
 
@@ -43,20 +51,117 @@ class AggregatePlugin extends Plugin
     }
 
     /**
-     * Make the derived tag manager site ID available to the Admin
-     * configuration form as a read-only value. The ID is the first 24 hex
-     * characters of the SHA-256 of the website token (the same derivation
-     * AGGREGATE uses; see app:tag-manager:sites). It lives only in the
-     * runtime configuration object and is never read back by this plugin:
-     * the script URLs always derive it from the token directly.
+     * Classic Grav Admin: make the derived tag manager site ID available to
+     * the configuration form, which reads the runtime configuration. The ID
+     * is the first 24 hex characters of the SHA-256 of the website token (the
+     * same derivation AGGREGATE uses; see app:tag-manager:sites). The script
+     * URLs never read it back: they always derive it from the token directly.
      */
     private function exposeSiteId(): void
     {
-        $token = trim((string) $this->config->get('plugins.aggregate.website_token'));
         $this->config->set(
             'plugins.aggregate.site_id',
-            $token === '' ? '' : self::siteId($token)
+            self::siteIdFor($this->config->get('plugins.aggregate.website_token'))
         );
+    }
+
+    /**
+     * Grav 2 Admin: the form's values come from the YAML files, not from the
+     * runtime configuration, and the token reaches the browser masked, so
+     * exposeSiteId() cannot reach it and the browser cannot derive the ID.
+     * Give the read-only field the ID derived from the saved token as its
+     * default, which the form shows while no site ID has been saved.
+     */
+    public function onApiBlueprintResolved(Event $event): void
+    {
+        if (($event['context'] ?? null) !== 'plugin' || ($event['plugin'] ?? null) !== 'aggregate') {
+            return;
+        }
+
+        $fields = $event['fields'] ?? null;
+        if (!\is_array($fields)) {
+            return;
+        }
+
+        $event['fields'] = self::withSiteIdDefault(
+            $fields,
+            self::siteIdFor($this->config->get('plugins.aggregate.website_token'))
+        );
+    }
+
+    /**
+     * Both Admins: refresh the site ID from the token being saved, so the form
+     * shows the right ID as soon as a new token is saved (Grav 2 Admin reloads
+     * the saved values, not the form definition, after saving). It is kept
+     * for display only; the script URLs always derive it from the token.
+     */
+    public function onAdminSave(Event $event): void
+    {
+        $object = $event['object'] ?? null;
+        if (!\is_object($object) || !method_exists($object, 'get') || !method_exists($object, 'set')
+            || !$this->isOwnConfiguration($object)) {
+            return;
+        }
+
+        $object->set('site_id', self::siteIdFor($object->get('website_token')));
+    }
+
+    /**
+     * Whether a saved object is this plugin's configuration: its storage file
+     * is plugins/aggregate.yaml (classic Admin and the Grav 2 API both attach
+     * it), or, when no file is attached, the Admin route is this plugin's.
+     */
+    private function isOwnConfiguration(object $object): bool
+    {
+        $file = method_exists($object, 'file') ? $object->file() : null;
+        if (\is_object($file) && method_exists($file, 'filename')) {
+            $filename = str_replace('\\', '/', (string) $file->filename());
+            $suffix = '/plugins/aggregate.yaml';
+
+            return substr($filename, -\strlen($suffix)) === $suffix;
+        }
+
+        $admin = $this->grav['admin'] ?? null;
+        $route = \is_object($admin) && isset($admin->route) ? (string) $admin->route : '';
+
+        return trim($route, '/') === 'plugins/aggregate';
+    }
+
+    /**
+     * Set the default of the site_id field, wherever it sits in the
+     * serialized field tree.
+     *
+     * @param array<int|string, mixed> $fields
+     * @return array<int|string, mixed>
+     */
+    private static function withSiteIdDefault(array $fields, string $siteId): array
+    {
+        foreach ($fields as $key => $field) {
+            if (!\is_array($field)) {
+                continue;
+            }
+            if (($field['name'] ?? null) === 'site_id') {
+                $field['default'] = $siteId;
+            }
+            if (isset($field['fields']) && \is_array($field['fields'])) {
+                $field['fields'] = self::withSiteIdDefault($field['fields'], $siteId);
+            }
+            $fields[$key] = $field;
+        }
+
+        return $fields;
+    }
+
+    /**
+     * The site ID for a website token, or an empty string without one.
+     *
+     * @param mixed $token
+     */
+    private static function siteIdFor($token): string
+    {
+        $token = \is_string($token) ? trim($token) : '';
+
+        return $token === '' ? '' : self::siteId($token);
     }
 
     private static function siteId(string $token): string
