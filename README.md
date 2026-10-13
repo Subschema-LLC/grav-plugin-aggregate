@@ -61,15 +61,15 @@ extract it into `user/plugins/`, and rename the extracted folder to
      the tracker sends only the page path, event name and goal; it never
      reads cookies, storage, the referrer, screen size or the query string.
      Tracker mode only.
-   - **Respect Do Not Track** — when a browser sends the `DNT` header,
-     none of the AGGREGATE scripts are added to the page at all (default
-     on).
-   - **Exclude Grav Admin users** — visitors logged in with an account
-     that has Grav Admin access are not tracked (default on).
+   - **Respect Do Not Track** — when a browser sends the `DNT` or
+     `Sec-GPC` (Global Privacy Control) header, none of the AGGREGATE
+     scripts are added to the page at all (default on).
+   - **Exclude Grav Admin users** — visitors logged in on the site with
+     an account that has admin access are not tracked (default on).
    - **Minified scripts** — load the minified builds (default on).
 
 The scripts are never added to Grav Admin pages or to non-HTML output such
-as feeds, in either mode.
+as feeds, JSON, XML or Markdown versions of pages, in either mode.
 
 ## Installation modes
 
@@ -221,6 +221,24 @@ Custom properties must exist in the AGGREGATE data model; the server drops
 anything else, and properties that require consent are only sent after an
 affirmative choice. In tag manager mode, send events through the
 container's data layer and tags instead.
+
+## Privacy
+
+When planning your compliance and privacy posture with AGGREGATE, keep the
+following in mind:
+
+- **Server connections:** The visitor's browser connects directly to your
+  self-hosted AGGREGATE instance to load the scripts and record page views,
+  even in anonymous mode. While no data is sent to any third party, the
+  connection is made to your server infrastructure.
+- **Consent default:** The plugin's **Consent default** setting defaults to
+  *Denied until the visitor chooses*. Setting this to *Granted* means tracking
+  operates in enhanced mode before explicit consent is granted, which requires
+  an appropriate legal basis (such as under the GDPR or ePrivacy Directive in
+  the EU).
+- **Privacy policy:** You should mention AGGREGATE in your website's privacy
+  policy, describing what data is processed and that analytics are hosted on
+  your own infrastructure.
 
 ## License
 

@@ -171,11 +171,16 @@ class AggregatePlugin extends Plugin
 
     /**
      * Insert the AGGREGATE script tags immediately before </body> of the
-     * generated HTML output. Output without a </body> (feeds, JSON,
-     * redirects) is left untouched.
+     * generated HTML output. Non-HTML formats (JSON, XML, Markdown) and
+     * output without a </body> (feeds, redirects) are left untouched.
      */
-    public function onOutputGenerated(): void
+    public function onOutputGenerated(?Event $event = null): void
     {
+        $page = ($event !== null && isset($event['page'])) ? $event['page'] : ($this->grav['page'] ?? null);
+        if (!$page || !method_exists($page, 'templateFormat') || $page->templateFormat() !== 'html') {
+            return;
+        }
+
         $tags = $this->buildScriptTags();
         if ($tags === null) {
             return;
@@ -194,9 +199,10 @@ class AggregatePlugin extends Plugin
      * Build the script tags for this response from the plugin
      * configuration, or return null when nothing must appear: plugin
      * disabled, missing instance URL or website token, admin context, a
-     * Do Not Track request we are configured to respect, or a visitor who
-     * can log in to Grav Admin while admin exclusion is on. These gates
-     * apply to both installation modes.
+     * Do Not Track or Global Privacy Control request we are configured
+     * to respect, or a visitor logged in on the site with admin access
+     * while admin exclusion is on. These gates apply to both
+     * installation modes.
      *
      * Tag order follows AGGREGATE's documented snippets (docs/SETUP.md):
      * the consent banner, when one is selected, loads before the tracker
@@ -220,15 +226,24 @@ class AggregatePlugin extends Plugin
             return null;
         }
 
-        // Respect Do Not Track: none of the scripts are loaded at all.
-        if (!empty($config['respect_dnt']) && ($_SERVER['HTTP_DNT'] ?? '') === '1') {
+        // Respect Do Not Track and Global Privacy Control: none of the scripts are loaded at all.
+        if (!empty($config['respect_dnt']) && (
+            ($_SERVER['HTTP_DNT'] ?? '') === '1'
+            || ($_SERVER['HTTP_SEC_GPC'] ?? '') === '1'
+            || ($_SERVER['HTTP_SEC_GPC'] ?? '') === '?1'
+        )) {
             return null;
         }
 
-        // Optionally keep users with Grav Admin access out of the statistics.
+        // Optionally keep users with admin access out of the statistics.
         if (!empty($config['exclude_admins']) && isset($this->grav['user'])) {
             $user = $this->grav['user'];
-            if ($user && ($user->authorize('admin.login') || $user->authorize('admin.super'))) {
+            if ($user && method_exists($user, 'authorize') && (
+                $user->authorize('admin.login')
+                || $user->authorize('admin.super')
+                || $user->authorize('api.access')
+                || $user->authorize('api.super')
+            )) {
                 return null;
             }
         }

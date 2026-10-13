@@ -1,3 +1,12 @@
+# v1.1.2
+## 10/13/2026
+
+* Fix: admin user exclusion now detects Grav 2 admin accounts (`api.access` and `api.super`) in addition to classic admin accounts (`admin.login` and `admin.super`)
+* Clarified exclusion wording: visitors logged in on the public site with an account that has admin access are excluded from tracking
+* Output restriction: only inject tracker scripts on HTML pages (verified via page template format `html`), preventing injection into non-HTML responses (JSON, XML, Markdown) that contain a closing `</body>` tag
+* Privacy: honor Global Privacy Control (`Sec-GPC: 1` header) alongside Do Not Track (`DNT: 1`)
+* Privacy: added privacy guidance to the README covering server connections, EU consent default legal basis, and privacy policy notices
+
 # v1.1.1
 ## 10/12/2026
 
