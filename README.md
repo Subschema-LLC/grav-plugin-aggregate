@@ -118,8 +118,13 @@ AGGREGATE; see its
 The container and banner URLs contain a site ID. You never type it: the
 plugin derives it from the website token, as the first 24 characters of
 the token's SHA-256 — the same derivation AGGREGATE uses. The Admin form
-shows it read-only next to the banner setting. Compare it in AGGREGATE
-under **Collection → Tag manager lite**, or on the server with:
+shows it read-only next to the banner setting, in the classic Admin and in
+Grav 2's Admin. Saving the settings refreshes it, and it is kept in the
+plugin's configuration file for that display only: the script URLs always
+derive it from the token, so editing the token in YAML directly changes
+the URLs even though the form shows the old ID until the settings are
+saved again. Compare it in AGGREGATE under **Collection → Tag manager
+lite**, or on the server with:
 
 ```bash
 php bin/console app:tag-manager:sites
